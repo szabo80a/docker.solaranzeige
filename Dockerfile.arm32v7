@@ -22,7 +22,6 @@ COPY root/entrypoint /usr/local/sbin/entrypoint
 COPY root/solaranzeige.process /usr/local/sbin/solaranzeige.process
 COPY root/solaranzeige.update /usr/local/sbin/solaranzeige.update
 COPY root/solaranzeige.setup /usr/local/sbin/solaranzeige.setup
-COPY root/qemu-arm-static /usr/bin/
 
 RUN apt-get -qy update \
     ### tweak some apt & dpkg settngs
@@ -45,32 +44,15 @@ RUN apt-get -qy update \
     && apt-get dist-upgrade -qy \
     ### install solaranzeige dependencies
     && apt-get install -qy ${BUILD_DEPENDENCIES} ${DEPENDENCIES} \
-    && mkdir /usr/share/ca-certificates/extra
-
-COPY root/cacert.crt /usr/share/ca-certificates/extra
-
-RUN dpkg-reconfigure ca-certificates \
-    && curl --cacert /usr/share/ca-certificates/extra/cacert.crt -fsSL  https://packages.grafana.com/gpg.key | apt-key add - \
-    && echo "deb https://packages.grafana.com/oss/deb stable main" | tee -a /etc/apt/sources.list.d/grafana.list \
-    && curl --cacert /usr/share/ca-certificates/extra/cacert.crt -fsSL  https://repos.influxdata.com/influxdb.key | apt-key add - \
-    && echo "deb https://repos.influxdata.com/debian buster stable" | tee -a /etc/apt/sources.list.d/influxdb.list \
     && curl -fsSL  http://repo.mosquitto.org/debian/mosquitto-repo.gpg.key | apt-key add - \
     && echo "deb https://repo.mosquitto.org/debian buster main" | tee -a /etc/apt/sources.list.d/mosquitto.list \
     && apt-get update \
     ### install solaranzeige dependencies
-    && apt install -y influxdb grafana mosquitto mosquitto-clients libmosquitto-dev \
-    && pecl install Mosquitto-alpha \
-    && echo "extension=mosquitto.so" | tee -a /etc/php/7.3/mods-available/mosquitto.ini \
+    && apt install -y mosquitto-clients libmosquitto-dev \
     ### configure system
     && phpenmod mosquitto \
     && a2enmod php7.3 \
     && sed -i 's/\/var\/log/\/var\/www\/log/g' /etc/apache2/envvars \
-    && sed -i 's/\/var\/log/\/var\/www\/log/g' /etc/default/grafana-server \
-    && sed -i 's/ulimit/#ulimit/g' /etc/init.d/influxdb \
-    && echo "STDERR=/var/www/log/influxdb.log" > /etc/default/influxdb \
-    ### install grafana plugins
-    && grafana-cli plugins install fetzerch-sunandmoon-datasource \
-    && grafana-cli plugins install briangann-gauge-panel \
     ### alter permissions
     && chmod +x /usr/local/sbin/entrypoint \
     && chmod +x /usr/local/sbin/solaranzeige.process \
@@ -96,8 +78,5 @@ ENTRYPOINT [ "/usr/local/sbin/entrypoint" ]
 
 VOLUME /solaranzeige
 VOLUME /var/www
-VOLUME /var/lib/influxdb
-VOLUME /var/lib/grafana
 
-EXPOSE 3000
 
